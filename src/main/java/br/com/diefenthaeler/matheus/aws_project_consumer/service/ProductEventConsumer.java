@@ -30,8 +30,9 @@ public class ProductEventConsumer {
 
         ProductEvent productEvent = objectMapper.readValue(envelope.getData(), ProductEvent.class);
 
-        log.info("Product event received - Event: {} - Productid: {} - ",
+        log.info("Product event received - Event: {} - Productid: {} - MessageId: {} ",
                 envelope.getEventType(),
-                productEvent.getProductId());
+                productEvent.getProductId(),
+                snsMessage.getMessageId());
     }
 }
