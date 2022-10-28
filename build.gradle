@@ -58,6 +58,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+
+    implementation group: 'com.amazonaws', name: 'aws-java-sdk-sqs', version: '1.12.329'
+    implementation group: 'org.springframework', name: 'spring-jms', version: '5.3.23'
+    implementation group: 'com.amazonaws', name: 'amazon-sqs-java-messaging-lib', version: '1.0.8'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
