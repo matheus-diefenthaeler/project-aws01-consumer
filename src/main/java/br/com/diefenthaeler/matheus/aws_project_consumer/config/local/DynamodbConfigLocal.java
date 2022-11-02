@@ -1,24 +1,25 @@
 package br.com.diefenthaeler.matheus.aws_project_consumer.config.local;
 
-import br.com.diefenthaeler.matheus.aws_project_consumer.model.ProductEventLog;
 import br.com.diefenthaeler.matheus.aws_project_consumer.repository.ProductEventLogRepository;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.model.*;
 import lombok.extern.slf4j.Slf4j;
 import org.socialsignin.spring.data.dynamodb.repository.config.EnableDynamoDBRepositories;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
-import org.springframework.context.event.EventListener;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Profile("local")
 @Configuration
@@ -26,8 +27,50 @@ import org.springframework.context.event.EventListener;
 @Slf4j
 public class DynamodbConfigLocal {
 
-    @Value("${aws.region}")
-    private String awsRegion;
+//    @Value("${aws.region}")
+//    private String awsRegion;
+
+    private final AmazonDynamoDB amazonDynamoDB;
+
+    public DynamodbConfigLocal() {
+
+        this.amazonDynamoDB = AmazonDynamoDBClient.builder().withEndpointConfiguration(
+                        new AwsClientBuilder.EndpointConfiguration("http://localhost:4566",
+                                Regions.US_EAST_1.getName()))
+                .withCredentials(new DefaultAWSCredentialsProviderChain())
+                .build();
+
+        DynamoDB dynamoDB = new DynamoDB(amazonDynamoDB);
+        List<AttributeDefinition> attributeDefinitions = new ArrayList<>();
+        attributeDefinitions.add(new AttributeDefinition()
+                .withAttributeName("pk")
+                .withAttributeType(ScalarAttributeType.S));
+        attributeDefinitions.add(new AttributeDefinition()
+                .withAttributeName("sk")
+                .withAttributeType(ScalarAttributeType.S));
+
+        List<KeySchemaElement> keySchema = new ArrayList<>();
+        keySchema.add(new KeySchemaElement()
+                .withAttributeName("pk")
+                .withKeyType(KeyType.HASH));
+        keySchema.add(new KeySchemaElement()
+                .withAttributeName("sk")
+                .withKeyType(KeyType.RANGE));
+
+        CreateTableRequest request = new CreateTableRequest()
+                .withTableName("product-events")
+                .withKeySchema(keySchema)
+                .withAttributeDefinitions(attributeDefinitions)
+                .withBillingMode(BillingMode.PROVISIONED);
+
+        Table table = dynamoDB.createTable(request);
+
+        try {
+            table.waitForActive();
+        } catch (InterruptedException e) {
+            log.error(e.getMessage());
+        }
+    }
 
     @Bean
     @Primary
@@ -44,21 +87,7 @@ public class DynamodbConfigLocal {
     @Bean
     @Primary
     public AmazonDynamoDB amazonDynamoDB() {
-        return AmazonDynamoDBClientBuilder.standard()
-                .withCredentials(new DefaultAWSCredentialsProviderChain())
-                .withRegion(Regions.fromName(awsRegion)).build();
+        return this.amazonDynamoDB;
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    public void setupDB(ApplicationReadyEvent event) {
-        AmazonDynamoDB amazonDynamoDB = event.getApplicationContext().getBean(AmazonDynamoDB.class);
-        DynamoDBMapper dynamoDBMapper = event.getApplicationContext().getBean(DynamoDBMapper.class);
-
-        CreateTableRequest createTableTarefaRequest = dynamoDBMapper.generateCreateTableRequest(ProductEventLog.class);
-
-        if (!amazonDynamoDB.listTables().getTableNames().contains(createTableTarefaRequest.getTableName())) {
-            createTableTarefaRequest.setProvisionedThroughput(new ProvisionedThroughput(1L, 1L));
-            amazonDynamoDB.createTable(createTableTarefaRequest);
-        }
-    }
 }
