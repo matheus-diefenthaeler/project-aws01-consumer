@@ -2,8 +2,6 @@ package br.com.diefenthaeler.matheus.aws_project_consumer.model;
 
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBHashKey;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBRangeKey;
-import lombok.Getter;
-import lombok.Setter;
 
 public class ProductEventKey {
     private String pk;
